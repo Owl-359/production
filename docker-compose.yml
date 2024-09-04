@@ -1,0 +1,48 @@
+# docker-compose.ymlのバージョン
+version: '3.10' 
+services:
+  db:
+   # データベースイメージをDockerhubからプル
+    image: postgres:14.1-alpine 
+    container_name: sampletodo_db
+    restart: always
+    # データベース起動に必要な環境情報
+    environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_PASSWORD=postgres
+    volumes: 
+      # データベース内容のマウント先を指定
+      - db:/var/lib/postgresql/data 
+    networks:
+      mynet:
+        aliases:
+          - db
+      healthcheck: 
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 1s
+        retries: 3
+  web:
+    container_name: sampletodo_web
+    build: .  
+    depends_on:
+      db: 
+        # dbのコンテナが起動完了してからwebコンテナを起動させる為の設定 
+        condition: service_healthy 
+    ports:
+      - '127.0.0.1:8000:8080'
+    environment:
+      POSTGRES_URL: postgresql://postgres:postgres@db:5432/postgres
+    volumes:
+      - './:/src'
+    networks:
+      mynet:
+
+volumes: 
+  db: 
+    driver: local
+
+# networksを使い 'db'と'web'という2つのコンテナを接続させる
+networks:
+  # 任意の名前
+  mynet:
+    driver: bridge
